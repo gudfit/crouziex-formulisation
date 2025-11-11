@@ -340,46 +340,47 @@ Section HermitianCase.
     rewrite v_is_x.
     apply V3_closure_deg5; lia.
   Qed.
+
+  Lemma inV3_inner_jk (j k : nat) (Hj : j <= 2) (Hk : k <= 2) :
+    inV3 (((alpha *: (adjM (A ^+ k) *m (A ^+ (S j))))
+          +m ((Conj alpha) *: (adjM (A ^+ (S k)) *m (A ^+ j)))) *v v).
+  Proof.
+    apply inV3_of_sum_matrices.
+    - apply inV3_of_scaled_matrix. apply quad_img_left; [assumption|assumption].
+    - apply inV3_of_scaled_matrix. apply quad_img_right; [assumption|assumption].
+  Qed.
+
+  Lemma inV3_inner_j (j : nat) (Hj : j <= 2) :
+    inV3 ((sum3M (fun k => (c j k) *:
+                     ((alpha *: (adjM (A ^+ k) *m (A ^+ (S j))))
+                    +m ((Conj alpha) *: (adjM (A ^+ (S k)) *m (A ^+ j))))) ) *v v).
+  Proof.
+    apply inV3_sum3M_apply.
+    - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
+      (* k = 0 <= 2 *)
+      apply le_S. apply le_S. apply le_n.
+    - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
+      (* k = 1 <= 2 *)
+      apply le_S. apply le_n.
+    - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
+      (* k = 2 <= 2 *)
+      apply le_n.
+  Qed.
+
+  Lemma Wv_in_V3_quadratic :
+    inV3 (Wop *v v).
+  Proof.
+    unfold Wop. 
+    apply inV3_sum3M_apply.
+    - apply inV3_inner_j. (* j = 0 <= 2 *)
+      apply le_S. apply le_S. apply le_n.
+    - apply inV3_inner_j. (* j = 1 <= 2 *)
+      apply le_S. apply le_n.
+    - apply inV3_inner_j. (* j = 2 <= 2 *)
+      apply le_n.
+  Qed.
+
 End HermitianCase.
-
-Lemma inV3_inner_jk (j k : nat) (Hj : j <= 2) (Hk : k <= 2) :
-  inV3 (((alpha *: (adjM (A ^+ k) *m (A ^+ (S j))))
-        +m ((Conj alpha) *: (adjM (A ^+ (S k)) *m (A ^+ j)))) *v v).
-Proof.
-  apply inV3_of_sum_matrices.
-  - apply inV3_of_scaled_matrix. apply quad_img_left; [assumption|assumption].
-  - apply inV3_of_scaled_matrix. apply quad_img_right; [assumption|assumption].
-Qed.
-
-Lemma inV3_inner_j (j : nat) (Hj : j <= 2) :
-  inV3 ((sum3M (fun k => (c j k) *:
-                   ((alpha *: (adjM (A ^+ k) *m (A ^+ (S j))))
-                  +m ((Conj alpha) *: (adjM (A ^+ (S k)) *m (A ^+ j))))) ) *v v).
-Proof.
-  apply inV3_sum3M_apply.
-  - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
-    (* k = 0 <= 2 *)
-    apply le_S. apply le_S. apply le_n.
-  - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
-    (* k = 1 <= 2 *)
-    apply le_S. apply le_n.
-  - apply inV3_of_scaled_matrix. eapply inV3_inner_jk; [exact Hj|].
-    (* k = 2 <= 2 *)
-    apply le_n.
-Qed.
-
-Lemma Wv_in_V3_quadratic :
-  inV3 (Wop *v v).
-Proof.
-  unfold Wop.
-  apply inV3_sum3M_apply.
-  - apply inV3_inner_j. (* j = 0 <= 2 *)
-    apply le_S. apply le_S. apply le_n.
-  - apply inV3_inner_j. (* j = 1 <= 2 *)
-    apply le_S. apply le_n.
-  - apply inV3_inner_j. (* j = 2 <= 2 *)
-    apply le_n.
-Qed.
 
 (* Adjoint action on inner product and zero helpers, used for the corollary *)
 Parameter inner_adj : forall (X : M) (y z : vct), <[ X *v y , z ]> = <[ y , (adjM X) *v z ]>.
@@ -406,25 +407,41 @@ Proof.
   reflexivity.
 Qed.
 
-
-
-Corollary open_lemma_quadratic (xi : vct) :
+Corollary open_lemma_quadratic
+  (v_is_x : v = x)
+  (span3_coords_deg5 :
+     forall p q : nat,
+       p + q <= 5 ->
+       exists a b c : C,
+         adjM (A ^+ q) *m A ^+ p *v x =
+         a *:v x +v b *:v (A *v x) +v c *:v (adjM A *v x))
+  (xi : vct) :
   (P3 *v xi = vzero) ->
   Re (<[ (Wop *v v) , xi ]>) = 0%R.
 Proof.
-  intros Hperp;  apply inner_killed_by_proj.
-  - apply Wv_in_V3_quadratic.
+  intros Hperp; apply inner_killed_by_proj.
+  - apply (Wv_in_V3_quadratic v_is_x span3_coords_deg5).
   - exact Hperp.
 Qed.
 
+
 Section QuadraticInstantiation.
+
+  Hypothesis v_is_x : v = x.
+  Hypothesis span3_coords_deg5 :
+    forall p q : nat,
+      p + q <= 5 ->
+      exists a b c : C,
+        adjM (A ^+ q) *m A ^+ p *v x =
+        a *:v x +v b *:v (A *v x) +v c *:v (adjM A *v x).
 
   Lemma open_lemma_quadratic_from_general (xi : vct) :
     (P3 *v xi = vzero) -> deriv xi = 0%R.
   Proof.
     intros Hperp.
     rewrite open_lemma_quadratic_equiv.
-    apply open_lemma_quadratic; exact Hperp.
+    apply (open_lemma_quadratic v_is_x span3_coords_deg5).
+    exact Hperp.
   Qed.
 
   Corollary open_lemma_quadratic_final (xi : vct) :
@@ -432,7 +449,7 @@ Section QuadraticInstantiation.
   Proof.
     intros Hperp.
     rewrite <- open_lemma_quadratic_equiv.
-    apply open_lemma_quadratic_from_general; exact Hperp.
+    apply open_lemma_quadratic_from_general; assumption.
   Qed.
 
 End QuadraticInstantiation.
